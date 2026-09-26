@@ -1,0 +1,35 @@
+{
+  "browser": {
+    "baseUrl": "https://kimsontien.1office.vn",
+    "port": 9222,
+    "profileDir": null
+  },
+  "salary": {
+    "dailyWageSalary": null,
+    "hoursPerDay": 8,
+    "standardDays": "auto",
+    "roundTo": 1000
+  },
+  "allowances": {},
+  "siteAllowancePerDay": null,
+  "mealPrice": 40000,
+  "insurance": {
+    "base": null,
+    "employeeRate": 0.105
+  },
+  "assumeFutureDays": "office",
+  "payslipLabelMap": {
+    "Tổng công làm việc thực tính": "points",
+    "Lương CB thực nhận": "baseSalary",
+    "Ngày công tác": "missionDays",
+    "PCCT thực lãnh": "siteAllowance",
+    "PC trách nhiệm": "allowance:Phụ cấp trách nhiệm",
+    "Phụ cấp đi lại / tháng": "allowance:Phụ cấp đi lại / tháng",
+    "Phụ cấp cơm trưa": "allowance:Phụ cấp cơm trưa",
+    "PC điện thoại": "allowance:Phụ cấp điện thoại",
+    "Khoản trích trừ vào lương (10.5%)": "insurance",
+    "Tạm ứng": "advance",
+    "TỔNG LƯƠNG THỰC LÃNH (NET)": "net"
+  },
+  "profile": null
+}
