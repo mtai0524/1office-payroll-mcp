@@ -77,7 +77,8 @@ export function buildDays(data, cfg, opts = {}) {
       note: '',
     };
 
-    const pending = d.date > today || (d.date === today && d.hours === 0);
+    // Today is still in progress: a partial punch (e.g. 7:43 - 12:12) doesn't mean a short day.
+    const pending = d.date > today || (d.date === today && d.hours < hpd);
     if (pending && !holiday && !off && assume !== 'none') {
       day = { ...day, ...normalizeOverride(assume === 'office' ? 'OFFICE' : assume), source: 'assumed' };
     }

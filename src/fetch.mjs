@@ -252,7 +252,11 @@ export async function fetchApplications(month, year, { refresh = false } = {}) {
         const key = `${type}:${row.id}`;
         let app = cache[key];
         if (!app || refresh || !app.approved) {
-          await p.goto(`${baseUrl}/apps/${slug}/view?ID=${row.id}`, `document.querySelector('.detail-field-label')`);
+          // Fields render progressively; wait until the status field has a value.
+          await p.goto(
+            `${baseUrl}/apps/${slug}/view?ID=${row.id}`,
+            `[...document.querySelectorAll('.detail-field-label')].some(l=>/^(Trạng thái|Status)$/.test(l.textContent.trim()) && l.nextElementSibling && l.nextElementSibling.innerText.trim())`,
+          );
           const raw = await p.eval(call(pageReadDetail));
           app = { ...normalizeApp(type, row.id, raw), created: row.created, url: `${baseUrl}/apps/${slug}/view?ID=${row.id}` };
           cache[key] = app;
