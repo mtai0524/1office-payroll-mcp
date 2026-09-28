@@ -15,20 +15,20 @@ Các rule ngoài công thức (thưởng, phạt, ngày đi công trình...) b�
 - **Claude Code** hoặc **Claude Desktop**.
 - Tài khoản 1Office của chính bạn.
 
-## Cài đặt (1 lệnh, không cần clone)
+## Cài đặt (1 lệnh, không cần clone, không cần Git)
 
 ### Claude Code
 **Windows – PowerShell** (dấu `--` phải nằm trong nháy đơn, nếu không PowerShell sẽ nuốt mất và báo `unknown option '-y'`):
 ```powershell
-claude mcp add 1office-payroll --scope user '--' cmd /c npx -y github:mtai0524/1office-payroll-mcp
+claude mcp add 1office-payroll --scope user '--' cmd /c npx -y https://codeload.github.com/mtai0524/1office-payroll-mcp/tar.gz/refs/heads/main
 ```
 **Windows – Command Prompt (cmd) hoặc Git Bash:**
 ```bash
-claude mcp add 1office-payroll --scope user -- cmd /c npx -y github:mtai0524/1office-payroll-mcp
+claude mcp add 1office-payroll --scope user -- cmd /c npx -y https://codeload.github.com/mtai0524/1office-payroll-mcp/tar.gz/refs/heads/main
 ```
 **macOS / Linux:**
 ```bash
-claude mcp add 1office-payroll --scope user -- npx -y github:mtai0524/1office-payroll-mcp
+claude mcp add 1office-payroll --scope user -- npx -y https://codeload.github.com/mtai0524/1office-payroll-mcp/tar.gz/refs/heads/main
 ```
 
 ### Claude Desktop
@@ -41,7 +41,7 @@ Thêm đoạn sau vào `claude_desktop_config.json`:
   "mcpServers": {
     "1office-payroll": {
       "command": "npx",
-      "args": ["-y", "github:mtai0524/1office-payroll-mcp"]
+      "args": ["-y", "https://codeload.github.com/mtai0524/1office-payroll-mcp/tar.gz/refs/heads/main"]
     }
   }
 }
@@ -50,10 +50,25 @@ Thêm đoạn sau vào `claude_desktop_config.json`:
 Trên Windows, nếu không chạy được thì đổi thành:
 ```json
 "command": "cmd",
-"args": ["/c", "npx", "-y", "github:mtai0524/1office-payroll-mcp"]
+"args": ["/c", "npx", "-y", "https://codeload.github.com/mtai0524/1office-payroll-mcp/tar.gz/refs/heads/main"]
 ```
 
 Sau khi cài, khởi động lại Claude.
+
+### Báo "disconnected" / "failed"
+1. **Đã cài theo lệnh cũ `github:mtai0524/...`?** Lệnh cũ cần Git, máy không có Git sẽ lỗi. Xoá đi rồi cài lại bằng lệnh ở trên:
+   ```
+   claude mcp remove 1office-payroll --scope user
+   ```
+2. **Kiểm tra Node:** chạy `node -v`, phải từ **v22** trở lên.
+3. **Chạy thử tay để xem lỗi thật** (không báo lỗi gì và đứng im là **đúng**, bấm Ctrl+C để thoát):
+   ```
+   npx -y https://codeload.github.com/mtai0524/1office-payroll-mcp/tar.gz/refs/heads/main
+   ```
+4. **Mạng chậm, lần đầu tải lâu quá thời gian chờ:** chạy lệnh ở bước 3 một lần cho tải xong, rồi mở lại Claude. Hoặc tăng thời gian chờ trước khi mở Claude Code:
+   - PowerShell: `$env:MCP_TIMEOUT=120000; claude`
+   - bash: `MCP_TIMEOUT=120000 claude`
+5. Xem trạng thái: `claude mcp get 1office-payroll`, hoặc gõ `/mcp` trong Claude Code.
 
 ### Muốn sửa code hoặc góp rule
 ```bash
