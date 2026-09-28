@@ -6,7 +6,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { fetchMonth } from './fetch.mjs';
 import { calculate, audit, comparePayslip } from './calc.mjs';
-import { loadConfig, patchConfig, readNotes, RULES_PATH, NOTES_PATH } from './config.mjs';
+import { loadConfig, patchConfig, readNotes, rulesPath, rulesWritePath, NOTES_PATH, DATA_DIR } from './config.mjs';
 import { ensureProfile, syncProfile } from './profile.mjs';
 
 const server = new McpServer({ name: '1office-payroll', version: '1.0.0' });
@@ -106,7 +106,7 @@ server.registerTool(
   },
   wrap(async () => ({
     content: [
-      { type: 'text', text: fs.readFileSync(RULES_PATH, 'utf8') },
+      { type: 'text', text: fs.readFileSync(rulesPath(), 'utf8') },
       { type: 'text', text: 'notes.md (cá nhân):\n' + (readNotes() || '(trống)') },
       { type: 'text', text: 'config.json:\n' + JSON.stringify(loadConfig(), null, 2) },
     ],
@@ -127,10 +127,13 @@ server.registerTool(
     },
   },
   wrap(async ({ rulesMarkdown, notesMarkdown, configPatch }) => {
-    if (rulesMarkdown) fs.writeFileSync(RULES_PATH, rulesMarkdown);
-    if (notesMarkdown) fs.writeFileSync(NOTES_PATH, notesMarkdown);
+    if (rulesMarkdown) fs.writeFileSync(rulesWritePath(), rulesMarkdown);
+    if (notesMarkdown) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(NOTES_PATH, notesMarkdown);
+    }
     const cfg = configPatch ? patchConfig(configPatch) : loadConfig();
-    return json({ ok: true, rulesUpdated: !!rulesMarkdown, notesUpdated: !!notesMarkdown, config: cfg });
+    return json({ ok: true, rulesUpdated: rulesMarkdown ? rulesWritePath() : false, notesUpdated: !!notesMarkdown, config: cfg });
   }),
 );
 

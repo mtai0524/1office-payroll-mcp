@@ -1,8 +1,7 @@
 // Minimal Chrome DevTools Protocol client for driving a logged-in 1Office tab.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
-import { ROOT, loadConfig } from './config.mjs';
+import { CHROME_PROFILE_DIR, loadConfig } from './config.mjs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -30,7 +29,7 @@ async function devtoolsUp(port) {
 export async function ensureChrome() {
   const { port, baseUrl } = loadConfig().browser;
   if (!(await devtoolsUp(port))) {
-    const profile = loadConfig().browser.profileDir || path.join(ROOT, '.chrome-profile');
+    const profile = loadConfig().browser.profileDir || CHROME_PROFILE_DIR;
     spawn(chromePath(), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run', `${baseUrl}/user`], {
       detached: true,
       stdio: 'ignore',

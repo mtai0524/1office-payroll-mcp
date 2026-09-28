@@ -1,5 +1,5 @@
 node_modules/
-# Personal data: never commit
+# Personal data lives in ~/.1office-payroll; ignore stray copies here too
 config.json
 notes.md
 cache/

@@ -10,25 +10,24 @@ MCP server giúp Claude tính lương hằng tháng từ **1Office** (kimsontien
 Các rule ngoài công thức (thưởng, phạt, ngày đi công trình...) bạn chỉ cần nói với Claude bằng lời. Claude chuyển chúng thành tham số, còn phép tính do code làm nên không bị lệch.
 
 ## Yêu cầu
-- Windows, macOS hoặc Linux, đã cài **Google Chrome**.
-- **Node.js 22 trở lên**.
+- Đã cài **Google Chrome**.
+- **Node.js 22 trở lên** ([tải ở đây](https://nodejs.org)).
 - **Claude Code** hoặc **Claude Desktop**.
 - Tài khoản 1Office của chính bạn.
 
-## Cài đặt
+## Cài đặt (1 lệnh, không cần clone)
 
+### Claude Code
+**Windows:**
 ```bash
-git clone https://github.com/mtai0524/1office-payroll-mcp.git
-cd 1office-payroll-mcp
-npm install
+claude mcp add 1office-payroll --scope user -- cmd /c npx -y github:mtai0524/1office-payroll-mcp
+```
+**macOS / Linux:**
+```bash
+claude mcp add 1office-payroll --scope user -- npx -y github:mtai0524/1office-payroll-mcp
 ```
 
-### Đăng ký với Claude Code
-```bash
-claude mcp add 1office-payroll --scope user -- node "<đường-dẫn-tuyệt-đối>/1office-payroll-mcp/src/server.mjs"
-```
-
-### Hoặc với Claude Desktop
+### Claude Desktop
 Thêm đoạn sau vào `claude_desktop_config.json`:
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -37,24 +36,39 @@ Thêm đoạn sau vào `claude_desktop_config.json`:
 {
   "mcpServers": {
     "1office-payroll": {
-      "command": "node",
-      "args": ["<đường-dẫn-tuyệt-đối>/1office-payroll-mcp/src/server.mjs"]
+      "command": "npx",
+      "args": ["-y", "github:mtai0524/1office-payroll-mcp"]
     }
   }
 }
 ```
 
+Trên Windows, nếu không chạy được thì đổi thành:
+```json
+"command": "cmd",
+"args": ["/c", "npx", "-y", "github:mtai0524/1office-payroll-mcp"]
+```
+
 Sau khi cài, khởi động lại Claude.
+
+### Muốn sửa code hoặc góp rule
+```bash
+git clone https://github.com/mtai0524/1office-payroll-mcp.git
+cd 1office-payroll-mcp
+npm install
+claude mcp add 1office-payroll --scope user -- node "<đường-dẫn-tuyệt-đối>/1office-payroll-mcp/src/server.mjs"
+```
 
 ## Lần chạy đầu tiên
 1. Hỏi Claude, ví dụ: *"Tính lương tháng này cho tôi"*.
 2. Tool mở một cửa sổ Chrome riêng và báo **CHƯA ĐĂNG NHẬP**.
 3. Bạn **tự đăng nhập** 1Office trong cửa sổ đó, tick "Duy trì đăng nhập", rồi bảo Claude chạy lại.
-4. Tool tự đồng bộ lương ngày công, phụ cấp và mức đóng bảo hiểm của bạn từ 1Office vào `config.json`. Bạn không cần nhập tay.
+4. Tool tự đồng bộ lương ngày công, phụ cấp và mức đóng bảo hiểm của bạn từ 1Office. Bạn không cần nhập tay.
 
-Phiên đăng nhập được lưu trong thư mục `.chrome-profile/` ngay trong repo. Lần sau không cần đăng nhập lại, trừ khi phiên hết hạn.
+Lần sau không cần đăng nhập lại, trừ khi phiên hết hạn.
 
 > Tool không bao giờ hỏi hay lưu mật khẩu. Mỗi người chỉ xem được dữ liệu của chính mình.
+> Khi dùng xong nên đóng cửa sổ Chrome đó, vì nó mở cổng debug cho phép chương trình khác trên máy điều khiển phiên đăng nhập.
 
 ## Hỏi Claude kiểu gì
 - *"Tính lương tháng 9, ngày 25 tôi đi công trình, ngày 26 làm online"*
@@ -73,18 +87,21 @@ Phiên đăng nhập được lưu trong thư mục `.chrome-profile/` ngay tron
 | `sync_profile` | Đồng bộ lương, phụ cấp và bảo hiểm từ 1Office |
 | `get_rules` / `update_rules` | Đọc và sửa rule |
 
-## Các file
-| File | Nội dung | Có lên git không |
-|---|---|---|
-| `rules.md` | Rule tính lương **chung của công ty** | ✅ Có |
-| `config.example.json` | Config mẫu | ✅ Có |
-| `config.json` | Con số **cá nhân**, tự tạo khi chạy lần đầu | ❌ Không |
-| `notes.md` | Ghi chú **cá nhân** | ❌ Không |
-| `cache/` | Bảng công và phiếu lương đã tải | ❌ Không |
-| `.chrome-profile/` | Phiên đăng nhập 1Office | ❌ Không, **tuyệt đối không chia sẻ** |
+## Dữ liệu lưu ở đâu
+Dữ liệu cá nhân nằm trong thư mục home của bạn: `~/.1office-payroll/`. Trên Windows là `C:\Users\<tên>\.1office-payroll\`. Thư mục này không bao giờ lên git.
+
+| File | Nội dung |
+|---|---|
+| `config.json` | Con số cá nhân (lương, phụ cấp, bảo hiểm), tự tạo và tự đồng bộ |
+| `notes.md` | Ghi chú cá nhân |
+| `cache/` | Bảng công và phiếu lương đã tải |
+| `chrome-profile/` | Phiên đăng nhập 1Office. **Tuyệt đối không chia sẻ** |
+| `rules.md` | Chỉ có khi bạn tự sửa rule lúc chạy qua npx; bản này được ưu tiên hơn bản chung |
+
+Rule chung của công ty nằm trong [`rules.md`](rules.md) của repo. Muốn đổi chỗ lưu dữ liệu thì đặt biến môi trường `OFFICE_PAYROLL_HOME`.
 
 ## Lưu ý
-- Công thức mới được kiểm chứng với mẫu **"Bảng lương VIOT 2026"**. Nếu bạn ở phòng ban khác, hãy chạy `compare_payslip` với một tháng đã có phiếu lương trước. Nếu có dòng lệch, nhờ Claude tìm nguyên nhân rồi cập nhật `rules.md` hoặc `config.json`.
-- Phát hiện rule mới áp dụng cho mọi người thì sửa `rules.md` và tạo pull request để cả nhóm cùng dùng.
-- Nếu port 9222 đã bị chiếm, đổi `browser.port` trong `config.json`.
+- Công thức mới được kiểm chứng với mẫu **"Bảng lương VIOT 2026"**. Nếu bạn ở phòng ban khác, hãy chạy `compare_payslip` với một tháng đã có phiếu lương trước. Nếu có dòng lệch, nhờ Claude tìm nguyên nhân rồi cập nhật rule.
+- Phát hiện rule mới áp dụng cho mọi người thì tạo issue hoặc pull request sửa `rules.md`.
+- Nếu port 9222 đã bị chiếm, đổi `browser.port` trong `~/.1office-payroll/config.json`.
 - Nếu cài Chrome ở chỗ khác, đặt biến môi trường `CHROME_PATH`.

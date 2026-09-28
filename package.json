@@ -14,5 +14,18 @@
   "private": true,
   "engines": {
     "node": ">=22"
+  },
+  "bin": {
+    "1office-payroll-mcp": "src/server.mjs"
+  },
+  "files": [
+    "src",
+    "rules.md",
+    "config.example.json",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mtai0524/1office-payroll-mcp.git"
   }
 }
