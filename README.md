@@ -18,7 +18,11 @@ Các rule ngoài công thức (thưởng, phạt, ngày đi công trình...) b�
 ## Cài đặt (1 lệnh, không cần clone)
 
 ### Claude Code
-**Windows:**
+**Windows – PowerShell** (dấu `--` phải nằm trong nháy đơn, nếu không PowerShell sẽ nuốt mất và báo `unknown option '-y'`):
+```powershell
+claude mcp add 1office-payroll --scope user '--' cmd /c npx -y github:mtai0524/1office-payroll-mcp
+```
+**Windows – Command Prompt (cmd) hoặc Git Bash:**
 ```bash
 claude mcp add 1office-payroll --scope user -- cmd /c npx -y github:mtai0524/1office-payroll-mcp
 ```
