@@ -115,25 +115,31 @@ const toNumber = (v) => {
   return Number(s.replace(',', '.'));
 };
 
-export async function fetchPayslip(month, year) {
+export async function fetchPayslip(month, year, attempts = 3) {
   const { baseUrl } = loadConfig().browser;
-  return withPage(async (p) => {
-    await p.goto(`${baseUrl}/user?customMenu=user-board-salary`, `typeof $==='function' && document.querySelector('.wsy-month')`);
-    const rawText = await p.eval(
-      `fetch('/user/board/index/salarydetail?year=${year}&month=${month}',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.text()).then(t=>{const j=JSON.parse(t);eval(j.callback);return t})`,
-    );
-    // Header renders first; items load a few seconds later (or never, if not published).
-    await p.waitFor(`document.querySelectorAll('.wst .wst-list-item').length>0`, 25000);
-    const { tabs, items } = await p.eval(call(pageReadPayslip));
+  let result = null;
+  // An unpublished payslip and a slow page look the same (no items), so retry before concluding.
+  for (let i = 1; i <= attempts; i++) {
+    result = await withPage(async (p) => {
+      await p.goto(`${baseUrl}/user?customMenu=user-board-salary`, `typeof $==='function' && document.querySelector('.wsy-month')`);
+      const rawText = await p.eval(
+        `fetch('/user/board/index/salarydetail?year=${year}&month=${month}',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.text()).then(t=>{const j=JSON.parse(t);eval(j.callback);return t})`,
+      );
+      // Header renders first; items load a few seconds later (or never, if not published).
+      await p.waitFor(`document.querySelectorAll('.wst .wst-list-item').length>0`, 25000);
+      const { tabs, items } = await p.eval(call(pageReadPayslip));
 
-    const hints = {};
-    const decoded = decodeEntities(rawText);
-    const re = /([^<>'"]{2,80})<elem name='hint' data-props='\{"content":"([^"]*)"/g;
-    for (let m; (m = re.exec(decoded)); ) hints[m[1].trim()] = m[2];
+      const hints = {};
+      const decoded = decodeEntities(rawText);
+      const re = /([^<>'"]{2,80})<elem name='hint' data-props='\{"content":"([^"]*)"/g;
+      for (let m; (m = re.exec(decoded)); ) hints[m[1].trim()] = m[2];
 
-    const lines = items.map((it) => ({ ...it, amount: toNumber(it.value), hint: hints[it.label] || null }));
-    return { month, year, published: lines.length > 0, tables: tabs, lines, hints };
-  });
+      const lines = items.map((it) => ({ ...it, amount: toNumber(it.value), hint: hints[it.label] || null }));
+      return { month, year, published: lines.length > 0, tables: tabs, lines, hints };
+    });
+    if (result.published) break;
+  }
+  return result;
 }
 
 // ------------------------------------------------------------- applications
@@ -229,6 +235,26 @@ export function normalizeApp(type, id, raw) {
 }
 
 // Applications affecting `month`: scan each list for items created within a window, open each detail.
+// 1Office is sometimes slow: retry, and fail loudly rather than return partial data.
+async function gotoReliable(p, url, readyExpr, what, attempts = 3, timeoutMs = 30000) {
+  for (let i = 1; i <= attempts; i++) {
+    if (await p.goto(url, readyExpr, timeoutMs)) return;
+  }
+  throw new Error(`1Office tải quá chậm hoặc không có dữ liệu: ${what}. Thử lại sau ít phút (dữ liệu chưa đầy đủ nên không tính lương).`);
+}
+
+// Wait until the number of list rows stops growing (rows render progressively).
+async function waitListStable(p) {
+  let last = -1;
+  for (let i = 0; i < 20; i++) {
+    const n = await p.eval(`document.querySelectorAll('tr a[href*="/view?ID="]').length`);
+    if (n === last) return n;
+    last = n;
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+  return last;
+}
+
 export async function fetchApplications(month, year, { refresh = false } = {}) {
   const { baseUrl } = loadConfig().browser;
   const cache = readCache('applications.json') || {};
@@ -243,22 +269,32 @@ export async function fetchApplications(month, year, { refresh = false } = {}) {
   return withPage(async (p) => {
     const apps = [];
     for (const [type, slug] of Object.entries(APP_TYPES)) {
-      await p.goto(
+      await gotoReliable(
+        p,
         `${baseUrl}/apps/${slug}/list?v=list&tab=private_all&sort_by=date_created&sort_type=desc`,
         `document.querySelector('a[href*="/view?ID="]') || /No results|Không có/.test(document.body.innerText)`,
+        `danh sách đơn ${type}`,
       );
+      await waitListStable(p);
       const list = (await p.eval(call(pageReadList))).filter((r) => inWindow(r.created));
       for (const row of list) {
         const key = `${type}:${row.id}`;
         let app = cache[key];
         if (!app || refresh || !app.approved) {
           // Fields render progressively; wait until the status field has a value.
-          await p.goto(
+          await gotoReliable(
+            p,
             `${baseUrl}/apps/${slug}/view?ID=${row.id}`,
-            `[...document.querySelectorAll('.detail-field-label')].some(l=>/^(Trạng thái|Status)$/.test(l.textContent.trim()) && l.nextElementSibling && l.nextElementSibling.innerText.trim())`,
+            // Status field filled in, and (for apps with a detail table) its date rows rendered.
+            `[...document.querySelectorAll('.detail-field-label')].some(l=>/^(Trạng thái|Status)$/.test(l.textContent.trim()) && l.nextElementSibling && l.nextElementSibling.innerText.trim())` +
+              (type === 'mission'
+                ? ''
+                : ` && [...document.querySelectorAll('table')].some(t=>!/Người tạo|Created by/.test(t.innerText.slice(0,200)) && /[0-9]{2}[/][0-9]{2}[/][0-9]{4}/.test(t.innerText))`),
+            `đơn ${type} #${row.id}`,
           );
           const raw = await p.eval(call(pageReadDetail));
           app = { ...normalizeApp(type, row.id, raw), created: row.created, url: `${baseUrl}/apps/${slug}/view?ID=${row.id}` };
+          if (type !== 'mission' && !app.entries.length) throw new Error(`Đơn ${type} #${row.id} đọc ra không có dòng ngày nào, thử lại sau.`);
           cache[key] = app;
         }
         apps.push(app);
@@ -271,6 +307,20 @@ export async function fetchApplications(month, year, { refresh = false } = {}) {
   });
 }
 
+// Transient page errors (navigation mid-read, slow render) usually succeed on a second try.
+async function retry(fn, attempts = 3) {
+  let err;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (/CHƯA ĐĂNG NHẬP/.test(e.message)) throw e;
+      err = e;
+    }
+  }
+  throw err;
+}
+
 // Everything for one month, cached to disk.
 export async function fetchMonth(month, year, { refresh = false } = {}) {
   const key = `month-${year}-${pad(month)}.json`;
@@ -278,9 +328,9 @@ export async function fetchMonth(month, year, { refresh = false } = {}) {
     const cached = readCache(key);
     if (cached) return cached;
   }
-  const timesheet = await fetchTimesheet(month, year);
+  const timesheet = await retry(() => fetchTimesheet(month, year));
   const payslip = await fetchPayslip(month, year);
-  const applications = await fetchApplications(month, year, { refresh });
+  const applications = await retry(() => fetchApplications(month, year, { refresh }));
   const data = { fetchedAt: new Date().toISOString(), month, year, timesheet, payslip, applications };
   writeCache(key, data);
   return data;
